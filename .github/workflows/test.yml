@@ -30,10 +30,13 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        run: npm run format:check
+        run: npm run check
 
       - name: Build action
         run: npm run build
+
+      - name: Package action
+        run: npm run package
 
       - name: Check for uncommitted changes
         run: |
