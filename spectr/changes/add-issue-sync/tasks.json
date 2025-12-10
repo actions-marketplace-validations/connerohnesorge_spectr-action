@@ -1,0 +1,233 @@
+{
+  "tasks": [
+    {
+      "description": "Add `sync-issues` input to `action.yml` (default: `'false'`)",
+      "id": "1.1",
+      "section": "Action Configuration",
+      "status": "completed"
+    },
+    {
+      "description": "Add `issue-labels` input to `action.yml` (default: `'spectr,change-proposal'`)",
+      "id": "1.2",
+      "section": "Action Configuration",
+      "status": "completed"
+    },
+    {
+      "description": "Add `issue-title-prefix` input to `action.yml` (default: `'[Spectr Change]'`)",
+      "id": "1.3",
+      "section": "Action Configuration",
+      "status": "completed"
+    },
+    {
+      "description": "Add `close-on-archive` input to `action.yml` (default: `'true'`)",
+      "id": "1.4",
+      "section": "Action Configuration",
+      "status": "completed"
+    },
+    {
+      "description": "Add `update-existing` input to `action.yml` (default: `'true'`)",
+      "id": "1.5",
+      "section": "Action Configuration",
+      "status": "completed"
+    },
+    {
+      "description": "Add `spectr-label` input to `action.yml` (default: `'spectr-managed'`)",
+      "id": "1.6",
+      "section": "Action Configuration",
+      "status": "completed"
+    },
+    {
+      "description": "Add output definitions: `issues-created`, `issues-updated`, `issues-closed`, `total-changes`",
+      "id": "1.7",
+      "section": "Action Configuration",
+      "status": "completed"
+    },
+    {
+      "description": "Create `src/issues/types.ts` with interfaces for `IssueSyncConfig`, `ChangeProposal`, `SyncResult`",
+      "id": "2.1",
+      "section": "Type Definitions",
+      "status": "completed"
+    },
+    {
+      "description": "Add input helper functions in `src/utils/inputs.ts` for new inputs",
+      "id": "2.2",
+      "section": "Type Definitions",
+      "status": "completed"
+    },
+    {
+      "description": "Create `src/issues/discover.ts` module",
+      "id": "3.1",
+      "section": "Change Discovery",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `discoverActiveChanges()` - scan `spectr/changes/` excluding `archive/`",
+      "id": "3.2",
+      "section": "Change Discovery",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `discoverArchivedChanges()` - scan `spectr/changes/archive/`",
+      "id": "3.3",
+      "section": "Change Discovery",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `readProposalContent()` - read `proposal.md` content",
+      "id": "3.4",
+      "section": "Change Discovery",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `readTasksContent()` - read `tasks.md` content (optional)",
+      "id": "3.5",
+      "section": "Change Discovery",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `findAffectedSpecs()` - list spec directories in change's `specs/` folder",
+      "id": "3.6",
+      "section": "Change Discovery",
+      "status": "completed"
+    },
+    {
+      "description": "Create `src/issues/format.ts` module",
+      "id": "4.1",
+      "section": "Issue Formatting",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `formatIssueTitle()` - generate title from change ID and prefix",
+      "id": "4.2",
+      "section": "Issue Formatting",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `formatIssueBody()` - generate body with marker, proposal, specs, tasks",
+      "id": "4.3",
+      "section": "Issue Formatting",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `extractChangeId()` - parse change ID from issue body marker",
+      "id": "4.4",
+      "section": "Issue Formatting",
+      "status": "completed"
+    },
+    {
+      "description": "Handle body truncation for large proposals (>65536 chars)",
+      "id": "4.5",
+      "section": "Issue Formatting",
+      "status": "completed"
+    },
+    {
+      "description": "Create `src/issues/sync.ts` module",
+      "id": "5.1",
+      "section": "GitHub API Integration",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `findManagedIssues()` - search issues by spectr-label",
+      "id": "5.2",
+      "section": "GitHub API Integration",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `createIssue()` - create new issue with labels",
+      "id": "5.3",
+      "section": "GitHub API Integration",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `updateIssue()` - update issue body and labels",
+      "id": "5.4",
+      "section": "GitHub API Integration",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `closeIssue()` - close issue for archived changes",
+      "id": "5.5",
+      "section": "GitHub API Integration",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `ensureLabelsExist()` - create labels if they don't exist",
+      "id": "5.6",
+      "section": "GitHub API Integration",
+      "status": "completed"
+    },
+    {
+      "description": "Create `src/issues/index.ts` module",
+      "id": "6.1",
+      "section": "Orchestration",
+      "status": "completed"
+    },
+    {
+      "description": "Implement `syncIssues()` main entry point",
+      "id": "6.2",
+      "section": "Orchestration",
+      "status": "completed"
+    },
+    {
+      "description": "Integrate issue sync into `src/spectr-action.ts` (conditional on `sync-issues` input)",
+      "id": "6.3",
+      "section": "Orchestration",
+      "status": "completed"
+    },
+    {
+      "description": "Set action outputs for sync results",
+      "id": "6.4",
+      "section": "Orchestration",
+      "status": "completed"
+    },
+    {
+      "description": "Add unit tests for `discover.ts` functions",
+      "id": "7.1",
+      "section": "Testing",
+      "status": "completed"
+    },
+    {
+      "description": "Add unit tests for `format.ts` functions",
+      "id": "7.2",
+      "section": "Testing",
+      "status": "completed"
+    },
+    {
+      "description": "Add unit tests for `sync.ts` functions (mock Octokit)",
+      "id": "7.3",
+      "section": "Testing",
+      "status": "completed"
+    },
+    {
+      "description": "Add integration test with fixture containing `spectr/changes/`",
+      "id": "7.4",
+      "section": "Testing",
+      "status": "completed"
+    },
+    {
+      "description": "Add test for archive detection and issue closure",
+      "id": "7.5",
+      "section": "Testing",
+      "status": "completed"
+    },
+    {
+      "description": "Update README.md with issue sync feature documentation",
+      "id": "8.1",
+      "section": "Documentation",
+      "status": "completed"
+    },
+    {
+      "description": "Add example workflow showing issue sync configuration",
+      "id": "8.2",
+      "section": "Documentation",
+      "status": "completed"
+    },
+    {
+      "description": "Document required permissions (`issues: write`)",
+      "id": "8.3",
+      "section": "Documentation",
+      "status": "completed"
+    }
+  ],
+  "version": 1
+}
