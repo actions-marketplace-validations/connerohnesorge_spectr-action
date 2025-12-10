@@ -66,10 +66,7 @@ describe("discover.ts", () => {
     for (const spec of specs) {
       const specPath = path.join(basePath, "specs", spec);
       fs.mkdirSync(specPath, { recursive: true });
-      fs.writeFileSync(
-        path.join(specPath, "spec.md"),
-        `# ${spec} spec`,
-      );
+      fs.writeFileSync(path.join(specPath, "spec.md"), `# ${spec} spec`);
     }
 
     return basePath;
@@ -201,8 +198,18 @@ describe("discover.ts", () => {
         tasksJson: {
           version: 1,
           tasks: [
-            { id: "1.1", section: "Setup", description: "First task", status: "completed" },
-            { id: "1.2", section: "Setup", description: "Second task", status: "pending" },
+            {
+              id: "1.1",
+              section: "Setup",
+              description: "First task",
+              status: "completed",
+            },
+            {
+              id: "1.2",
+              section: "Setup",
+              description: "Second task",
+              status: "pending",
+            },
           ],
         },
       });

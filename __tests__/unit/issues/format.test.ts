@@ -6,7 +6,10 @@ import {
   formatIssueBody,
   formatIssueTitle,
 } from "../../../src/issues/format";
-import type { ChangeProposal, IssueSyncConfig } from "../../../src/issues/types";
+import type {
+  ChangeProposal,
+  IssueSyncConfig,
+} from "../../../src/issues/types";
 
 describe("format.ts", () => {
   const mockConfig: IssueSyncConfig = {

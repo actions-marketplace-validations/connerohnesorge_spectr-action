@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it, mock } from "node:test";
-import {
-  createOctokitClient,
-  getRepoContext,
-} from "../../../src/issues/sync";
+import { createOctokitClient, getRepoContext } from "../../../src/issues/sync";
 
 describe("sync.ts", () => {
   describe("createOctokitClient", () => {
@@ -95,7 +92,11 @@ describe("sync.ts", () => {
       } as any;
 
       const repo = { owner: "test", repo: "repo" };
-      const result = await findManagedIssues(mockOctokit, repo, "spectr-managed");
+      const result = await findManagedIssues(
+        mockOctokit,
+        repo,
+        "spectr-managed",
+      );
 
       // Should exclude the PR (number 2)
       assert.equal(result.length, 2);
@@ -127,7 +128,11 @@ describe("sync.ts", () => {
       } as any;
 
       const repo = { owner: "test", repo: "repo" };
-      const result = await findManagedIssues(mockOctokit, repo, "spectr-managed");
+      const result = await findManagedIssues(
+        mockOctokit,
+        repo,
+        "spectr-managed",
+      );
 
       assert.equal(result.length, 1);
       assert.equal(result[0].changeId, "add-feature");
@@ -162,7 +167,11 @@ describe("sync.ts", () => {
       } as any;
 
       const repo = { owner: "test", repo: "repo" };
-      const result = await findManagedIssues(mockOctokit, repo, "spectr-managed");
+      const result = await findManagedIssues(
+        mockOctokit,
+        repo,
+        "spectr-managed",
+      );
 
       assert.equal(result.length, 1);
       assert.equal(result[0].number, 2);
@@ -327,9 +336,7 @@ describe("sync.ts", () => {
 
       const createdLabels: string[] = [];
       const mockOctokit = {
-        paginate: async () => [
-          { name: "existing-label" },
-        ],
+        paginate: async () => [{ name: "existing-label" }],
         rest: {
           issues: {
             listLabelsForRepo: {},
@@ -359,10 +366,7 @@ describe("sync.ts", () => {
 
       const createdLabels: string[] = [];
       const mockOctokit = {
-        paginate: async () => [
-          { name: "spectr" },
-          { name: "spectr-managed" },
-        ],
+        paginate: async () => [{ name: "spectr" }, { name: "spectr-managed" }],
         rest: {
           issues: {
             listLabelsForRepo: {},
@@ -436,10 +440,9 @@ describe("sync.ts", () => {
         spectrLabel: "spectr-managed",
       } as any;
 
-      await assert.rejects(
-        () => ensureLabelsExist(mockOctokit, repo, config),
-        { message: "Server Error" },
-      );
+      await assert.rejects(() => ensureLabelsExist(mockOctokit, repo, config), {
+        message: "Server Error",
+      });
     });
   });
 });

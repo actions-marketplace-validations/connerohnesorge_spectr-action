@@ -27,7 +27,8 @@ describe("types.ts", () => {
 
   describe("extractChangeIdFromBody", () => {
     it("should extract change ID from body with marker", () => {
-      const body = "<!-- spectr-change-id:add-feature -->\n\n## Proposal\nSome content";
+      const body =
+        "<!-- spectr-change-id:add-feature -->\n\n## Proposal\nSome content";
       const changeId = extractChangeIdFromBody(body);
       assert.equal(changeId, "add-feature");
     });
@@ -68,7 +69,10 @@ describe("types.ts", () => {
       ];
 
       for (const marker of validMarkers) {
-        assert.ok(CHANGE_ID_MARKER_PATTERN.test(marker), `Should match: ${marker}`);
+        assert.ok(
+          CHANGE_ID_MARKER_PATTERN.test(marker),
+          `Should match: ${marker}`,
+        );
       }
     });
 
@@ -81,7 +85,10 @@ describe("types.ts", () => {
       ];
 
       for (const marker of invalidMarkers) {
-        assert.ok(!CHANGE_ID_MARKER_PATTERN.test(marker), `Should not match: ${marker}`);
+        assert.ok(
+          !CHANGE_ID_MARKER_PATTERN.test(marker),
+          `Should not match: ${marker}`,
+        );
       }
     });
   });
