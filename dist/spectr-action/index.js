@@ -28422,6 +28422,813 @@ function maxSatisfying(versions, version) {
 
 /***/ }),
 
+/***/ 7641:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+/**
+ * Change discovery module
+ *
+ * Scans spectr/changes/ directory to find active and archived change proposals
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.discoverActiveChanges = discoverActiveChanges;
+exports.discoverArchivedChanges = discoverArchivedChanges;
+exports.readProposalContent = readProposalContent;
+exports.readTasksContent = readTasksContent;
+exports.findAffectedSpecs = findAffectedSpecs;
+const fs = __importStar(__nccwpck_require__(3024));
+const path = __importStar(__nccwpck_require__(6760));
+const CHANGES_DIR = "spectr/changes";
+const ARCHIVE_DIR = "spectr/changes/archive";
+const PROPOSAL_FILE = "proposal.md";
+const TASKS_FILE = "tasks.md";
+const TASKS_JSON_FILE = "tasks.json";
+const SPECS_DIR = "specs";
+/**
+ * Discover all active (non-archived) change proposals
+ * @param workspacePath - Root path of the repository
+ * @returns Array of active change proposals
+ */
+async function discoverActiveChanges(workspacePath) {
+    const changesPath = path.join(workspacePath, CHANGES_DIR);
+    if (!fs.existsSync(changesPath)) {
+        return [];
+    }
+    const entries = fs.readdirSync(changesPath, { withFileTypes: true });
+    const proposals = [];
+    for (const entry of entries) {
+        // Skip non-directories and the archive directory
+        if (!entry.isDirectory() || entry.name === "archive") {
+            continue;
+        }
+        const changePath = path.join(changesPath, entry.name);
+        const proposalPath = path.join(changePath, PROPOSAL_FILE);
+        // Only process directories with a proposal.md file
+        if (!fs.existsSync(proposalPath)) {
+            continue;
+        }
+        const proposal = await readChangeProposal(entry.name, changePath, false);
+        if (proposal) {
+            proposals.push(proposal);
+        }
+    }
+    return proposals;
+}
+/**
+ * Discover all archived change proposals
+ * @param workspacePath - Root path of the repository
+ * @returns Array of archived change proposals
+ */
+async function discoverArchivedChanges(workspacePath) {
+    const archivePath = path.join(workspacePath, ARCHIVE_DIR);
+    if (!fs.existsSync(archivePath)) {
+        return [];
+    }
+    const entries = fs.readdirSync(archivePath, { withFileTypes: true });
+    const proposals = [];
+    for (const entry of entries) {
+        if (!entry.isDirectory()) {
+            continue;
+        }
+        const changePath = path.join(archivePath, entry.name);
+        const proposalPath = path.join(changePath, PROPOSAL_FILE);
+        // Only process directories with a proposal.md file
+        if (!fs.existsSync(proposalPath)) {
+            continue;
+        }
+        const proposal = await readChangeProposal(entry.name, changePath, true);
+        if (proposal) {
+            proposals.push(proposal);
+        }
+    }
+    return proposals;
+}
+/**
+ * Read a change proposal from a directory
+ * @param id - Change ID (directory name)
+ * @param changePath - Full path to the change directory
+ * @param isArchived - Whether the change is in the archive
+ * @returns Change proposal or null if invalid
+ */
+async function readChangeProposal(id, changePath, isArchived) {
+    const proposalContent = readProposalContent(changePath);
+    if (!proposalContent) {
+        return null;
+    }
+    const tasksContent = readTasksContent(changePath);
+    const affectedSpecs = findAffectedSpecs(changePath);
+    return {
+        affectedSpecs,
+        id,
+        isArchived,
+        path: changePath,
+        proposalContent,
+        tasksContent,
+    };
+}
+/**
+ * Read proposal.md content from a change directory
+ * @param changePath - Path to the change directory
+ * @returns Content of proposal.md or null if not found
+ */
+function readProposalContent(changePath) {
+    const proposalPath = path.join(changePath, PROPOSAL_FILE);
+    try {
+        return fs.readFileSync(proposalPath, "utf-8");
+    }
+    catch {
+        return null;
+    }
+}
+/**
+ * Read tasks content from a change directory
+ * Supports both tasks.md and tasks.json formats
+ * @param changePath - Path to the change directory
+ * @returns Content of tasks file or undefined if not found
+ */
+function readTasksContent(changePath) {
+    // Try tasks.md first
+    const tasksMarkdownPath = path.join(changePath, TASKS_FILE);
+    try {
+        return fs.readFileSync(tasksMarkdownPath, "utf-8");
+    }
+    catch {
+        // Fall through to try JSON
+    }
+    // Try tasks.json
+    const tasksJsonPath = path.join(changePath, TASKS_JSON_FILE);
+    try {
+        const jsonContent = fs.readFileSync(tasksJsonPath, "utf-8");
+        return formatTasksJsonAsMarkdown(jsonContent);
+    }
+    catch {
+        return undefined;
+    }
+}
+/**
+ * Format tasks.json content as Markdown for display in issues
+ */
+function formatTasksJsonAsMarkdown(jsonContent) {
+    try {
+        const data = JSON.parse(jsonContent);
+        if (!data.tasks || !Array.isArray(data.tasks)) {
+            return jsonContent;
+        }
+        const sections = new Map();
+        for (const task of data.tasks) {
+            const section = task.section || "Tasks";
+            if (!sections.has(section)) {
+                sections.set(section, []);
+            }
+            sections.get(section)?.push({
+                description: task.description,
+                id: task.id,
+                status: task.status,
+            });
+        }
+        const lines = ["# Tasks", ""];
+        for (const [section, tasks] of sections) {
+            lines.push(`## ${section}`, "");
+            for (const task of tasks) {
+                const checkbox = task.status === "completed" ? "[x]" : "[ ]";
+                const statusBadge = task.status === "in_progress" ? " *(in progress)*" : "";
+                lines.push(`- ${checkbox} ${task.id}: ${task.description}${statusBadge}`);
+            }
+            lines.push("");
+        }
+        return lines.join("\n");
+    }
+    catch {
+        return jsonContent;
+    }
+}
+/**
+ * Find affected specs by listing directories in specs/ subdirectory
+ * @param changePath - Path to the change directory
+ * @returns Array of spec names (directory names)
+ */
+function findAffectedSpecs(changePath) {
+    const specsPath = path.join(changePath, SPECS_DIR);
+    if (!fs.existsSync(specsPath)) {
+        return [];
+    }
+    try {
+        const entries = fs.readdirSync(specsPath, { withFileTypes: true });
+        return entries
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name);
+    }
+    catch {
+        return [];
+    }
+}
+
+
+/***/ }),
+
+/***/ 2789:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+/**
+ * Issue formatting module
+ *
+ * Generates issue titles and bodies from change proposal content
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.formatIssueTitle = formatIssueTitle;
+exports.formatIssueBody = formatIssueBody;
+exports.extractChangeId = extractChangeId;
+exports.bodiesMatch = bodiesMatch;
+const types_1 = __nccwpck_require__(6033);
+const TRUNCATION_NOTICE = "\n\n---\n*This content has been truncated due to GitHub issue size limits. See the full proposal in the repository.*";
+/**
+ * Format issue title from change ID and configuration
+ * @param changeId - The change ID
+ * @param config - Issue sync configuration
+ * @returns Formatted issue title
+ */
+function formatIssueTitle(changeId, config) {
+    return `${config.titlePrefix} ${changeId}`;
+}
+/**
+ * Format issue body from change proposal content
+ * Includes hidden marker, proposal content, affected specs, and tasks
+ * @param proposal - The change proposal
+ * @returns Formatted issue body
+ */
+function formatIssueBody(proposal) {
+    const parts = [];
+    // Hidden marker for issue-to-change mapping (always first)
+    parts.push((0, types_1.generateChangeIdMarker)(proposal.id));
+    parts.push("");
+    // Proposal content
+    parts.push("## Proposal");
+    parts.push("");
+    parts.push(proposal.proposalContent.trim());
+    parts.push("");
+    // Affected specs section (if any)
+    if (proposal.affectedSpecs.length > 0) {
+        parts.push("## Affected Specs");
+        parts.push("");
+        for (const spec of proposal.affectedSpecs) {
+            parts.push(`- \`${spec}\``);
+        }
+        parts.push("");
+    }
+    // Tasks section (if present)
+    if (proposal.tasksContent) {
+        parts.push("## Tasks");
+        parts.push("");
+        parts.push(proposal.tasksContent.trim());
+        parts.push("");
+    }
+    // Footer
+    parts.push("---");
+    parts.push("*This issue is managed by [Spectr](https://github.com/connerohnesorge/spectr). Changes to the proposal will be reflected here automatically.*");
+    const body = parts.join("\n");
+    // Handle body truncation if needed
+    return truncateBody(body);
+}
+/**
+ * Truncate issue body if it exceeds GitHub's limit
+ * @param body - Original issue body
+ * @returns Truncated body if needed
+ */
+function truncateBody(body) {
+    if (body.length <= types_1.MAX_ISSUE_BODY_LENGTH) {
+        return body;
+    }
+    // Calculate max content length accounting for truncation notice
+    const maxContentLength = types_1.MAX_ISSUE_BODY_LENGTH - TRUNCATION_NOTICE.length;
+    // Truncate at a reasonable point (try to end at a newline)
+    let truncatedBody = body.substring(0, maxContentLength);
+    const lastNewline = truncatedBody.lastIndexOf("\n");
+    if (lastNewline > maxContentLength * 0.8) {
+        truncatedBody = truncatedBody.substring(0, lastNewline);
+    }
+    return truncatedBody + TRUNCATION_NOTICE;
+}
+/**
+ * Extract change ID from issue body marker
+ * @param body - Issue body content
+ * @returns Change ID or null if not found
+ */
+function extractChangeId(body) {
+    const match = body.match(types_1.CHANGE_ID_MARKER_PATTERN);
+    return match ? match[1] : null;
+}
+/**
+ * Check if two issue bodies have the same content (ignoring whitespace differences)
+ * Used to determine if an update is needed
+ * @param existing - Existing issue body
+ * @param updated - New issue body
+ * @returns true if content is effectively the same
+ */
+function bodiesMatch(existing, updated) {
+    // Normalize whitespace for comparison
+    const normalize = (s) => s.replace(/\r\n/g, "\n").replace(/\s+$/gm, "").trim();
+    return normalize(existing) === normalize(updated);
+}
+
+
+/***/ }),
+
+/***/ 104:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+/**
+ * Issue sync orchestration module
+ *
+ * Main entry point for the GitHub Issues sync feature
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.syncIssues = syncIssues;
+const core = __importStar(__nccwpck_require__(7484));
+const discover_1 = __nccwpck_require__(7641);
+const format_1 = __nccwpck_require__(2789);
+const sync_1 = __nccwpck_require__(8413);
+/**
+ * Main entry point for issue sync
+ * Discovers changes, syncs with GitHub Issues, and returns results
+ * @param config - Issue sync configuration
+ * @param workspacePath - Root path of the repository
+ * @returns Sync results
+ */
+async function syncIssues(config, workspacePath) {
+    const result = {
+        closed: 0,
+        created: 0,
+        errors: [],
+        totalChanges: 0,
+        updated: 0,
+    };
+    if (!config.enabled) {
+        core.info("Issue sync is disabled");
+        return result;
+    }
+    if (!config.githubToken) {
+        throw new Error("GitHub token is required for issue sync. Please provide the github-token input.");
+    }
+    core.info("Starting issue sync...");
+    // Setup GitHub API client and repo context
+    const octokit = (0, sync_1.createOctokitClient)(config.githubToken);
+    const repo = (0, sync_1.getRepoContext)();
+    core.info(`Repository: ${repo.owner}/${repo.repo}`);
+    // Ensure required labels exist
+    core.info("Ensuring labels exist...");
+    await (0, sync_1.ensureLabelsExist)(octokit, repo, config);
+    // Discover all changes
+    core.info("Discovering change proposals...");
+    const activeChanges = await (0, discover_1.discoverActiveChanges)(workspacePath);
+    const archivedChanges = config.closeOnArchive
+        ? await (0, discover_1.discoverArchivedChanges)(workspacePath)
+        : [];
+    result.totalChanges = activeChanges.length;
+    core.info(`Found ${activeChanges.length} active changes`);
+    if (archivedChanges.length > 0) {
+        core.info(`Found ${archivedChanges.length} archived changes`);
+    }
+    // Find existing managed issues
+    core.info("Finding existing managed issues...");
+    const managedIssues = await (0, sync_1.findManagedIssues)(octokit, repo, config.spectrLabel);
+    core.info(`Found ${managedIssues.length} existing managed issues`);
+    // Build a map of change ID to managed issue
+    const issueMap = new Map();
+    for (const issue of managedIssues) {
+        issueMap.set(issue.changeId, issue);
+    }
+    // Get all labels to apply (user-specified + spectr-managed)
+    const allLabels = [...config.labels];
+    if (!allLabels.includes(config.spectrLabel)) {
+        allLabels.push(config.spectrLabel);
+    }
+    // Process active changes
+    for (const change of activeChanges) {
+        try {
+            const syncResult = await syncActiveChange(octokit, repo, change, config, allLabels, issueMap.get(change.id));
+            if (syncResult === "created") {
+                result.created++;
+            }
+            else if (syncResult === "updated") {
+                result.updated++;
+            }
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            core.warning(`Failed to sync change ${change.id}: ${message}`);
+            result.errors.push({
+                changeId: change.id,
+                message,
+                recoverable: true,
+            });
+        }
+    }
+    // Process archived changes (close their issues)
+    if (config.closeOnArchive) {
+        for (const change of archivedChanges) {
+            const existingIssue = issueMap.get(change.id);
+            if (existingIssue && existingIssue.state === "open") {
+                try {
+                    await (0, sync_1.closeIssue)(octokit, repo, existingIssue.number, `This change has been archived. Closing the tracking issue.`);
+                    result.closed++;
+                    core.info(`Closed issue #${existingIssue.number} for archived change ${change.id}`);
+                }
+                catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    core.warning(`Failed to close issue for archived change ${change.id}: ${message}`);
+                    result.errors.push({
+                        changeId: change.id,
+                        message,
+                        recoverable: true,
+                    });
+                }
+            }
+        }
+    }
+    // Log summary
+    core.info("=== Issue Sync Summary ===");
+    core.info(`Created: ${result.created}`);
+    core.info(`Updated: ${result.updated}`);
+    core.info(`Closed: ${result.closed}`);
+    core.info(`Total active changes: ${result.totalChanges}`);
+    if (result.errors.length > 0) {
+        core.warning(`Errors encountered: ${result.errors.length}`);
+    }
+    return result;
+}
+/**
+ * Sync a single active change with GitHub Issues
+ * @returns "created", "updated", or "skipped"
+ */
+async function syncActiveChange(octokit, repo, change, config, labels, existingIssue) {
+    const title = (0, format_1.formatIssueTitle)(change.id, config);
+    const body = (0, format_1.formatIssueBody)(change);
+    if (!existingIssue) {
+        // Create new issue
+        const issueNumber = await (0, sync_1.createIssue)(octokit, repo, title, body, labels);
+        core.info(`Created issue #${issueNumber} for change ${change.id}`);
+        return "created";
+    }
+    // Issue exists - check if update needed
+    if (!config.updateExisting) {
+        core.debug(`Skipping update for change ${change.id} (update-existing is false)`);
+        return "skipped";
+    }
+    // Check if issue was closed but change is now active
+    if (existingIssue.state === "closed") {
+        await (0, sync_1.reopenIssue)(octokit, repo, existingIssue.number);
+        await (0, sync_1.updateIssue)(octokit, repo, existingIssue.number, title, body, labels);
+        core.info(`Reopened and updated issue #${existingIssue.number} for change ${change.id}`);
+        return "updated";
+    }
+    // Check if content has changed
+    if ((0, format_1.bodiesMatch)(existingIssue.body, body) && existingIssue.title === title) {
+        core.debug(`No changes for issue #${existingIssue.number} (${change.id})`);
+        return "skipped";
+    }
+    // Update the issue
+    await (0, sync_1.updateIssue)(octokit, repo, existingIssue.number, title, body, labels);
+    core.info(`Updated issue #${existingIssue.number} for change ${change.id}`);
+    return "updated";
+}
+
+
+/***/ }),
+
+/***/ 8413:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+/**
+ * GitHub API integration module for issue sync
+ *
+ * Handles creating, updating, and closing issues via the GitHub API
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createOctokitClient = createOctokitClient;
+exports.findManagedIssues = findManagedIssues;
+exports.createIssue = createIssue;
+exports.updateIssue = updateIssue;
+exports.closeIssue = closeIssue;
+exports.reopenIssue = reopenIssue;
+exports.ensureLabelsExist = ensureLabelsExist;
+exports.getRepoContext = getRepoContext;
+const core_1 = __nccwpck_require__(767);
+const plugin_paginate_rest_1 = __nccwpck_require__(3779);
+const plugin_rest_endpoint_methods_1 = __nccwpck_require__(9210);
+const types_1 = __nccwpck_require__(6033);
+// Create Octokit with plugins
+const ExtendedOctokit = core_1.Octokit.plugin(plugin_paginate_rest_1.paginateRest, plugin_rest_endpoint_methods_1.restEndpointMethods);
+/**
+ * Create an authenticated Octokit client
+ */
+function createOctokitClient(token) {
+    return new ExtendedOctokit({ auth: token });
+}
+/**
+ * Find all issues managed by Spectr in the repository
+ * @param octokit - Authenticated Octokit client
+ * @param repo - Repository context
+ * @param spectrLabel - Label used to identify Spectr-managed issues
+ * @returns Array of managed issues
+ */
+async function findManagedIssues(octokit, repo, spectrLabel) {
+    // Search for issues with the spectr label (both open and closed)
+    const issues = await octokit.paginate(octokit.rest.issues.listForRepo, {
+        labels: spectrLabel,
+        owner: repo.owner,
+        per_page: 100,
+        repo: repo.repo,
+        state: "all",
+    });
+    const managedIssues = [];
+    for (const issue of issues) {
+        // Skip pull requests (they also appear in the issues API)
+        if (issue.pull_request) {
+            continue;
+        }
+        const changeId = (0, types_1.extractChangeIdFromBody)(issue.body || "");
+        if (changeId) {
+            managedIssues.push({
+                body: issue.body || "",
+                changeId,
+                number: issue.number,
+                state: issue.state,
+                title: issue.title,
+            });
+        }
+    }
+    return managedIssues;
+}
+/**
+ * Create a new issue for a change proposal
+ * @param octokit - Authenticated Octokit client
+ * @param repo - Repository context
+ * @param title - Issue title
+ * @param body - Issue body
+ * @param labels - Labels to apply
+ * @returns Created issue number
+ */
+async function createIssue(octokit, repo, title, body, labels) {
+    const response = await octokit.rest.issues.create({
+        body,
+        labels,
+        owner: repo.owner,
+        repo: repo.repo,
+        title,
+    });
+    return response.data.number;
+}
+/**
+ * Update an existing issue
+ * @param octokit - Authenticated Octokit client
+ * @param repo - Repository context
+ * @param issueNumber - Issue number to update
+ * @param title - New issue title
+ * @param body - New issue body
+ * @param labels - Labels to set
+ */
+async function updateIssue(octokit, repo, issueNumber, title, body, labels) {
+    await octokit.rest.issues.update({
+        body,
+        issue_number: issueNumber,
+        labels,
+        owner: repo.owner,
+        repo: repo.repo,
+        title,
+    });
+}
+/**
+ * Close an issue (for archived changes)
+ * @param octokit - Authenticated Octokit client
+ * @param repo - Repository context
+ * @param issueNumber - Issue number to close
+ * @param comment - Optional comment to add before closing
+ */
+async function closeIssue(octokit, repo, issueNumber, comment) {
+    // Add optional closing comment
+    if (comment) {
+        await octokit.rest.issues.createComment({
+            body: comment,
+            issue_number: issueNumber,
+            owner: repo.owner,
+            repo: repo.repo,
+        });
+    }
+    await octokit.rest.issues.update({
+        issue_number: issueNumber,
+        owner: repo.owner,
+        repo: repo.repo,
+        state: "closed",
+        state_reason: "completed",
+    });
+}
+/**
+ * Reopen a closed issue (for unarchived changes)
+ * @param octokit - Authenticated Octokit client
+ * @param repo - Repository context
+ * @param issueNumber - Issue number to reopen
+ */
+async function reopenIssue(octokit, repo, issueNumber) {
+    await octokit.rest.issues.update({
+        issue_number: issueNumber,
+        owner: repo.owner,
+        repo: repo.repo,
+        state: "open",
+    });
+}
+/**
+ * Ensure required labels exist in the repository
+ * Creates labels if they don't exist
+ * @param octokit - Authenticated Octokit client
+ * @param repo - Repository context
+ * @param config - Issue sync configuration
+ */
+async function ensureLabelsExist(octokit, repo, config) {
+    // Combine all required labels
+    const requiredLabels = [...config.labels];
+    if (!requiredLabels.includes(config.spectrLabel)) {
+        requiredLabels.push(config.spectrLabel);
+    }
+    // Get existing labels
+    const existingLabels = await octokit.paginate(octokit.rest.issues.listLabelsForRepo, {
+        owner: repo.owner,
+        per_page: 100,
+        repo: repo.repo,
+    });
+    const existingLabelNames = new Set(existingLabels.map((label) => label.name.toLowerCase()));
+    // Create missing labels
+    for (const labelName of requiredLabels) {
+        if (!existingLabelNames.has(labelName.toLowerCase())) {
+            try {
+                await octokit.rest.issues.createLabel({
+                    color: getLabelColor(labelName),
+                    description: getLabelDescription(labelName),
+                    name: labelName,
+                    owner: repo.owner,
+                    repo: repo.repo,
+                });
+            }
+            catch (error) {
+                // Label might have been created by another process, ignore 422 errors
+                if (error.status !== 422) {
+                    throw error;
+                }
+            }
+        }
+    }
+}
+/**
+ * Get color for a label based on its name
+ */
+function getLabelColor(labelName) {
+    const colors = {
+        "change-proposal": "1D76DB",
+        spectr: "7B68EE",
+        "spectr-managed": "5319E7",
+    };
+    return colors[labelName.toLowerCase()] || "EDEDED";
+}
+/**
+ * Get description for a label based on its name
+ */
+function getLabelDescription(labelName) {
+    const descriptions = {
+        "change-proposal": "A change proposal tracked by Spectr",
+        spectr: "Related to Spectr spec-driven development",
+        "spectr-managed": "Issue managed by Spectr action",
+    };
+    return descriptions[labelName.toLowerCase()] || "";
+}
+/**
+ * Get repository context from environment
+ */
+function getRepoContext() {
+    const repository = process.env.GITHUB_REPOSITORY;
+    if (!repository) {
+        throw new Error("GITHUB_REPOSITORY environment variable is not set");
+    }
+    const [owner, repo] = repository.split("/");
+    if (!owner || !repo) {
+        throw new Error(`Invalid GITHUB_REPOSITORY format: ${repository}`);
+    }
+    return { owner, repo };
+}
+
+
+/***/ }),
+
+/***/ 6033:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/**
+ * TypeScript type definitions for GitHub Issues sync feature
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MAX_ISSUE_BODY_LENGTH = exports.CHANGE_ID_MARKER_PATTERN = void 0;
+exports.generateChangeIdMarker = generateChangeIdMarker;
+exports.extractChangeIdFromBody = extractChangeIdFromBody;
+/**
+ * Marker comment format for linking issues to changes
+ * Format: <!-- spectr-change-id:CHANGE_ID -->
+ */
+exports.CHANGE_ID_MARKER_PATTERN = /<!--\s*spectr-change-id:([a-zA-Z0-9_-]+)\s*-->/;
+/**
+ * Maximum issue body length (GitHub limit)
+ */
+exports.MAX_ISSUE_BODY_LENGTH = 65536;
+/**
+ * Generate the marker comment for a change ID
+ */
+function generateChangeIdMarker(changeId) {
+    return `<!-- spectr-change-id:${changeId} -->`;
+}
+/**
+ * Extract change ID from issue body using marker pattern
+ */
+function extractChangeIdFromBody(body) {
+    const match = body.match(exports.CHANGE_ID_MARKER_PATTERN);
+    return match ? match[1] : null;
+}
+
+
+/***/ }),
+
 /***/ 1737:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -28465,7 +29272,9 @@ const path = __importStar(__nccwpck_require__(6760));
 const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const download_version_1 = __nccwpck_require__(8255);
+const issues_1 = __nccwpck_require__(104);
 const spectr_1 = __nccwpck_require__(6728);
+const inputs_1 = __nccwpck_require__(9612);
 const platforms_1 = __nccwpck_require__(8361);
 /**
  * Main entry point for the GitHub Action
@@ -28493,7 +29302,23 @@ async function run() {
         const validationOutput = await runSpectrValidation(spectrPath, strict);
         // 5. Process results and create annotations
         const hasErrors = await processValidationResults(validationOutput);
-        // 6. Set action status
+        // 6. Run issue sync if enabled
+        const issueSyncConfig = (0, inputs_1.getIssueSyncConfig)();
+        if (issueSyncConfig.enabled) {
+            const workspacePath = process.env.GITHUB_WORKSPACE;
+            if (!workspacePath) {
+                throw new Error("GITHUB_WORKSPACE environment variable is not set");
+            }
+            core.info("");
+            core.info("=== Issue Sync ===");
+            const syncResult = await (0, issues_1.syncIssues)(issueSyncConfig, workspacePath);
+            // Set issue sync outputs
+            core.setOutput("issues-created", syncResult.created.toString());
+            core.setOutput("issues-updated", syncResult.updated.toString());
+            core.setOutput("issues-closed", syncResult.closed.toString());
+            core.setOutput("total-changes", syncResult.totalChanges.toString());
+        }
+        // 7. Set action status
         if (hasErrors) {
             core.setFailed("Spectr validation failed with errors");
         }
@@ -28783,6 +29608,87 @@ exports.TOOL_CACHE_NAME = exports.OWNER = exports.REPO = void 0;
 exports.REPO = "spectr";
 exports.OWNER = "connerohnesorge";
 exports.TOOL_CACHE_NAME = "spectr";
+
+
+/***/ }),
+
+/***/ 9612:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.versionFile = exports.src = exports.args = exports.githubToken = exports.version = void 0;
+exports.getIssueSyncConfig = getIssueSyncConfig;
+const core = __importStar(__nccwpck_require__(7484));
+exports.version = core.getInput("version");
+exports.githubToken = core.getInput("github-token");
+exports.args = core.getInput("args");
+exports.src = core.getInput("src");
+exports.versionFile = core.getInput("version-file");
+/**
+ * Get issue sync configuration from action inputs
+ */
+function getIssueSyncConfig() {
+    const syncIssues = core.getInput("sync-issues");
+    const issueLabels = core.getInput("issue-labels");
+    const issueTitlePrefix = core.getInput("issue-title-prefix");
+    const closeOnArchive = core.getInput("close-on-archive");
+    const updateExisting = core.getInput("update-existing");
+    const spectrLabel = core.getInput("spectr-label");
+    const token = core.getInput("github-token");
+    return {
+        closeOnArchive: closeOnArchive.toLowerCase() !== "false",
+        enabled: syncIssues.toLowerCase() === "true",
+        githubToken: token,
+        labels: parseLabels(issueLabels || "spectr,change-proposal"),
+        spectrLabel: spectrLabel || "spectr-managed",
+        titlePrefix: issueTitlePrefix || "[Spectr Change]",
+        updateExisting: updateExisting.toLowerCase() !== "false",
+    };
+}
+/**
+ * Parse comma-separated labels into array
+ */
+function parseLabels(labelsInput) {
+    return labelsInput
+        .split(",")
+        .map((label) => label.trim())
+        .filter((label) => label.length > 0);
+}
 
 
 /***/ }),
