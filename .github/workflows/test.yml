@@ -91,7 +91,6 @@ jobs:
         uses: ./
         with:
           version: latest
-          strict: true
 
   test-valid-with-changes:
     name: Test Valid Project with Changes (${{ matrix.os }})
@@ -115,7 +114,6 @@ jobs:
         uses: ./
         with:
           version: latest
-          strict: true
 
   test-multi-capability:
     name: Test Multi-Capability Project
@@ -136,7 +134,6 @@ jobs:
         uses: ./
         with:
           version: latest
-          strict: true
 
   test-invalid-project:
     name: Test Invalid Project (Missing Scenarios)
@@ -154,7 +151,6 @@ jobs:
         uses: ./__tests__/fixtures/invalid-missing-scenarios/
         with:
           version: latest
-          strict: true
 
       - name: Verify validation failed
         shell: bash
@@ -181,7 +177,6 @@ jobs:
         uses: ./__tests__/fixtures/invalid-malformed-spec/
         with:
           version: latest
-          strict: true
 
       - name: Verify validation failed
         shell: bash
@@ -191,27 +186,6 @@ jobs:
             exit 1
           fi
           echo "Validation correctly failed for malformed spec"
-
-  test-strict-mode:
-    name: Test Strict Mode Toggle
-    runs-on: ubuntu-latest
-    needs: lint-and-build
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          persist-credentials: false
-
-      - name: Copy invalid fixture to root
-        shell: bash
-        run: |
-          rm -rf ./spectr && cp -r __tests__/fixtures/invalid-missing-scenarios/spectr ./spectr
-
-      - name: Run spectr-action with strict mode disabled
-        uses: ./
-        with:
-          version: latest
-          strict: false
 
   test-empty-project:
     name: Test Empty Spectr Project
@@ -232,7 +206,6 @@ jobs:
         uses: ./
         with:
           version: latest
-          strict: true
 
   test-version-resolution:
     name: Test Version Resolution
@@ -253,7 +226,6 @@ jobs:
         uses: ./
         with:
           version: latest
-          strict: true
 
   validate-spectr:
     name: Validate Spectr (Dogfood)
@@ -269,7 +241,6 @@ jobs:
         uses: ./
         with:
           version: latest
-          strict: true
 
   all-tests-passed:
     name: All Tests Passed
@@ -282,7 +253,6 @@ jobs:
       - test-multi-capability
       - test-invalid-project
       - test-invalid-malformed
-      - test-strict-mode
       - test-empty-project
       - test-version-resolution
       - validate-spectr
